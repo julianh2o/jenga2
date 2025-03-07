@@ -7,7 +7,7 @@ interface KeypadProps {
   onSubmit: (value: string) => void;
 }
 
-function Keypad({ onSubmit }: KeypadProps) {
+export default function Keypad({ onSubmit }: KeypadProps) {
   const [entry, setEntry] = React.useState("");
 
   const gridStyle = {

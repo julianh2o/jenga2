@@ -1,6 +1,7 @@
 import React from "react";
 import { ButtonGroup, Button, Stack } from "react-bootstrap";
 import { Rule } from "@/hooks/useRules";
+import Keypad from "@/components/keypad";
 import RuleDisplay from "@/components/ruleDisplay";
 import _ from "lodash";
 
@@ -16,14 +17,13 @@ const bigButtons = {
   height: "64px",
 };
 
-function Jenga({ assignments }: JengaProps) {
-  const [jenga, setJenga] = React.useState<number | null>(null);
+export default function Jenga({ assignments }: JengaProps) {
+  const [jenga, setJenga] = React.useState<string | null>(null);
   const [ruleDisplay, setRuleDisplay] = React.useState<Rule | null>(null);
-  console.log(ruleDisplay);
   return (
     <div>
       {!jenga && !ruleDisplay && (
-        <Keypad onSubmit={(value: number) => setJenga(value)} />
+        <Keypad onSubmit={(value: string) => setJenga(value)} />
       )}
       {jenga && (
         <div>
@@ -35,7 +35,7 @@ function Jenga({ assignments }: JengaProps) {
             }}
           />
           <ButtonGroup vertical className="w-100">
-            {Object.values(assignments[jenga - 1]).map((rule: Rule) => (
+            {Object.values(assignments[parseInt(jenga) - 1]).map((rule: Rule) => (
               <Stack key={rule.category}>
                 {rule === ruleDisplay ? (
                   <RuleDisplay rule={rule} selected={true} />
@@ -55,7 +55,8 @@ function Jenga({ assignments }: JengaProps) {
               style={bigButtons}
               onClick={() =>
                 setRuleDisplay(
-                  _.sample(Object.values(assignments[jenga - 1])) || null
+                  _.sample(Object.values(assignments[parseInt(jenga) - 1])) ||
+                    null
                 )
               }
             >

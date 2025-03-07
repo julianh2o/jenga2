@@ -5,7 +5,7 @@ interface RuleDisplayProps {
   disabled?: boolean;
   selected?: boolean;
   compact?: boolean;
-  tile?: number;
+  tile?: string;
   backClicked?: () => void;
   onClick?: () => void;
   rule?: Rule;
