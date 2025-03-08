@@ -7,7 +7,7 @@ interface ConfigPresetSelectorProps {
   onChange: (value: string) => void;
 }
 
-function ConfigPresetSelector(props: ConfigPresetSelectorProps) {
+export default function ConfigPresetSelector(props: ConfigPresetSelectorProps) {
   return (
     <Form.Select
       value={props.value ? props.value : "custom"}

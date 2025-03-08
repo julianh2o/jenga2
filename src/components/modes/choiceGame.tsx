@@ -13,7 +13,7 @@ function sampleRules(rules: Rule[], count: number): Rule[] {
   return _.sampleSize(rules, count);
 }
 
-function ChoiceGame({ rules, choices }: ChoiceGameProps) {
+export default function ChoiceGame({ rules, choices }: ChoiceGameProps) {
   const [draw, setDraw] = React.useState<Rule[]>(sampleRules(rules, choices));
   const [selected, setSelected] = React.useState<Rule[]>([]);
   const [locked, setLocked] = React.useState<Rule[] | null>(null);

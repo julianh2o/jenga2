@@ -2,6 +2,10 @@ import { Form, useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import { useRules } from "@/hooks/useRules";
+import ConfigArray from "@/components/configArray";
+import ChoiceGame from "@/components/modes/choiceGame";
+import TagSelector from "@/components/tagSelector";
+import ConfigPresetSelector from "@/components/configPresetSelector";
 import {
   Alert,
   Badge,
@@ -15,6 +19,7 @@ import {
   Tab,
 } from "react-bootstrap";
 import React from "react";
+import _ from "lodash";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -26,39 +31,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import Jenga from "@/components/modes/jenga";
 import RuleDisplay from "@/components/ruleDisplay";
+import { leastCommonMultiple } from "@/services/math";
+import { useWeights, WeightProvider } from "@/hooks/weightContext";
+import { useWeightedRules } from "@/hooks/useWeightedRules";
 
-interface FormData {
-  name: string;
-  stars: number;
-}
-
-function createWeightedRules(rules,weights) {
-  const lcm = leastCommonMultiple([1,..._.compact(_.flatten(Object.values(weights)))]);
-  const integerWeights =_.mapValues(weights,(arr) => _.map(arr,w => w*lcm));
-  const res = _.flatten(_.map(rules,(rule) => {
-      const baseWeight = rule.weight !== undefined ? rule.weight : 1;
-      const categoryLevelWeight = weights[rule.category][rule.level-1];
-      const tagWeight = _.reduce(rule.tags,(product,tag) => product * _.get(weights,`${tag}.${rule.level-1}`,1),1);
-
-      const totalWeight = baseWeight * categoryLevelWeight * tagWeight;
-      return _.times(totalWeight,() => rule);
-  }));
-  return res;
-}
-
-function generateJengaAssignments(rules,weights,optionCount) {
-  const weightedRules = createWeightedRules(rules,weights);
-  return _.times(52,() => {
-      return _.times(optionCount,_.identity).reduce((acc,v) => {
-          const chosenCategories = Object.keys(acc);
-          const reducedRules = _.reject(weightedRules,(rule) => chosenCategories.includes(rule.category));
-          if (reducedRules.length === 0) return acc;
-          const chosenRule = _.sample(reducedRules);
-          acc[chosenRule.category] = chosenRule;
-          return acc;
-      },{});
-  });
-}
 
 const sampleRules = (rules,n) => {
   const choices = [];
@@ -74,11 +50,6 @@ const sampleRules = (rules,n) => {
   }
 
   return choices;
-}
-
-const serializePreset = (preset) => {
-  const txt = `{"name":"${preset.name}","weights":{\n${_.map(categories,c => `\t"${c}":${JSON.stringify(preset.weights[c])}`).join(",\n")}\n}}`;
-  return _.map(txt.split("\n"),s => "\t\t"+s).join("\n")
 }
 
 const countRules = (rules) => {
@@ -112,39 +83,74 @@ function JengaPane({ eventKey, title, children }: JengaPaneProps) {
 }
 
 const Home: NextPage = () => {
-  const { register, handleSubmit, reset } = useForm<FormData>();
-  const { rules, loading, error } = useRules();
-  const [message, setMessage] = useState<string>("");
+  const { loading, error } = useRules();
+
+  const presets = [
+    {
+        "name": "Flat",
+        "weights": {
+          "Physical": [1, 1, 1, 1, 1],
+          "Drinking": [1, 1, 1, 1, 1], 
+          "Gameplay": [1, 1, 1, 1, 1],
+          "Strip": [1, 1, 1, 1, 1],
+          "Truth": [1, 1, 1, 1, 1]
+        }
+    },
+    {"name": "Round 1","weights": {
+        "Physical": [3, 2, 1, 0.25, 0],
+        "Drinking": [2, 2, 2, 3, 3],
+        "Gameplay": [1, 1, 1, 1, 1],
+        "Strip": [1.5, 1.5, 1.5, 0.5, 0.5],
+        "Truth": [1, 2, 2, 1.5, 1.5],
+        "duo": [0,0,0,0,0],
+    }},
+    {"name":"Julian","weights":{"Physical":[2,3,1,1,0.75],"Drinking":[0,0.75,1,1,2],"Gameplay":[0.75,0.75,0.75,0.75,0.75],"Strip":[2,1,1,1,1],"Truth":[1,1,1,1.5,2],"darkroom":[0,0,0,0,0],"duo":[0,0,0,0,0],"nsfw":[1,1,1,1,1],"kissing":[1,1,1,1,1],"silly":[0,0,0,0,0],"serious":[1,1,1,1,1]}},
+    {"name": "Round 2","weights": {
+        "Physical": [0.5, 3, 2, 2, 1],
+        "Drinking": [0, 0.75, 1.5, 1.5, 2],
+        "Gameplay": [0, 0, 0.75, 1, 1],
+        "Strip": [1, 1, 2, 2, 3],
+        "Truth": [0, 0, 0.5, 1, 1.5],
+        "duo": [0,0,0,0,0],
+    }},
+    {"name": "Round 3","weights":{
+        "Physical": [ 1, 2, 2, 3, 3 ],
+        "Drinking": [ 0.25, 0.25, 2, 2, 2 ],
+        "Gameplay": [ 0, 0, 0.75, 0.75, 0.75 ],
+        "Strip": [ 0, 0, 0.5, 0.5, 1 ],
+        "Truth": [ 0, 0, 0, 0.25, 1.5 ],
+        "duo": [0,0,0,0,0],
+    }},
+    {"name": "Duo","weights": {
+        "Physical": [ 0, 0, 0, 0, 0 ],
+        "Drinking": [ 0, 0, 0, 0, 0 ],
+        "Gameplay": [ 0, 0, 0, 0, 0 ],
+        "Strip": [ 1, 0, 0, 0, 0 ],
+        "Truth": [ 1, 1, 1, 1, 1 ],
+    }},
+];
+
   const jengaChoices = 3;
-  const data = props.data;
-  const {defaultPresets, categories, tags: allTags} = processData(data);
 
-  const [weights,setWeights] = React.useState(localStorage.getObject("weights") || _.first(defaultPresets).weights);
-  const [weightedRules,setWeightedRules] = React.useState(createWeightedRules(data,weights));
-  const [rule,setRule] = React.useState(null);
-  const [showSaveModal,setShowSaveModal] = React.useState(false);
-  const [preset,setPreset] = React.useState(localStorage.getObject("preset") || _.first(defaultPresets).name);
-  const [userPresets,setUserPresets] = React.useState(localStorage.getObject("presets") || defaultPresets);
-  const [assignments,setAssignments] = React.useState(generateJengaAssignments(data,weights,jengaChoices));
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
-  React.useEffect(() => {
-      const preamble = "#preset=";
-      if (!window.location.hash.startsWith(preamble)) return;
-      const raw = decodeURIComponent(window.location.hash.substring(preamble.length));
-      const weights = JSON.parse(raw);
-      setPreset("custom");
-      setWeights(weights);
-  },[]);
-
-  React.useEffect(() => {
-      window.weights = weights;
-      setWeightedRules(createWeightedRules(data,weights));
-  },[weights]);
+  return <>
+    <WeightProvider>
+      <GameRoot 
+        presets={presets}
+      />
+    </WeightProvider>
+  </>
+}
+function GameRoot({ presets }: { presets: { name: string, weights: Record<string, number[]> }[] }) {
+  const {weights,setWeights} = useWeights();
+  const weightedRules = useWeightedRules();
+  const [preset,setPreset] = React.useState(localStorage.getObject("preset") || _.first(presets)!.name);
 
   const configSelected = (weights, name) => {
       name = name || "custom";
       if (weights) {
-          setAssignments(generateJengaAssignments(data,weights,jengaChoices));
           setWeights(weights);
           localStorage.setObject("weights",weights)
       }
@@ -156,77 +162,6 @@ const Home: NextPage = () => {
       const preset = _.find(userPresets,{name:presetName});
       configSelected(preset && preset.weights,presetName);
   }
-
-  const linkPreset = (weights) => {
-      const link = `${window.location.origin + window.location.pathname}#preset=${encodeURIComponent(JSON.stringify(weights))}`;
-      window.open(link,"_blank");
-  }
-
-  const deletePreset = (preset) => {
-      if (!confirm("Are you sure you want to delete preset: "+preset)) return;
-      const without = _.reject(userPresets,{"name":preset});
-      localStorage.setObject("presets",without);
-      setUserPresets(without);
-      if (without.length) {
-          configSelected(without[0].weights,without[0].name);
-      } else {
-          configSelected(null,"custom");
-      }
-  }
-
-  const savePreset = (preset, weights) => {
-      const existing = _.find(userPresets,{"name":preset});
-      if (existing) {
-          existing.weights = weights;
-      } else {
-          userPresets.push({
-              "name":preset,
-              weights
-          });
-      }
-      const newPresets = _.reject(userPresets,{"name":""});
-      setUserPresets(newPresets);
-      localStorage.setObject("presets",newPresets);
-
-      setShowSaveModal(false);
-      setPreset(preset);
-      localStorage.setObject("preset",preset);
-
-      console.log(_.map(newPresets,preset => serializePreset(preset)).join(",\n"));
-  }
-
-  const resetPresets = () => {
-      localStorage.clear();
-      window.location = window.location.origin + window.location.pathname;
-  }
-  
-
-  const onSubmit = async (data: FormData) => {
-    setMessage("Submitting...");
-
-    if (loading) {
-      setMessage("Loading rules...");
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-      if (response.ok) {
-        setMessage("Submitted successfully!");
-        reset();
-      } else {
-        setMessage("Error: " + result.error);
-      }
-    } catch (error) {
-      setMessage("Something went wrong.");
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -281,16 +216,10 @@ const Home: NextPage = () => {
         </Container>
         <Tab.Content className="overflow-hidden d-flex flex-column">
           <JengaPane eventKey="jenga" title="Jenga">
-            <Jenga assignments={assignments} />
+            <Jenga />
           </JengaPane>
           <JengaPane eventKey="fast" title="Fast">
-            <RuleDisplay rule={rule} />
-            <ButtonGroup vertical className="w-100">
-              <Button onClick={() => setRule(_.sample(weightedRules))}>
-                <i className="fas fa-dice"></i>
-                &nbsp; Random Rule
-              </Button>
-            </ButtonGroup>
+            <FastGameMode />
           </JengaPane>
           <JengaPane eventKey="choose" title="Choose and Pass">
             <ChoiceGame rules={weightedRules} choices={5} />
@@ -316,22 +245,8 @@ const Home: NextPage = () => {
               >
                 <i className="fas fa-copy"></i>
               </Button>
-              <Button
-                disabled={preset !== "custom"}
-                variant="success"
-                onClick={() => setShowSaveModal(true)}
-              >
-                <i className="fas fa-save"></i>
-              </Button>
               <Button onClick={() => linkPreset(weights)}>
                 <i className="fas fa-link"></i>
-              </Button>
-              <Button
-                disabled={preset === "custom"}
-                variant="danger"
-                onClick={() => deletePreset(preset)}
-              >
-                <i className="fas fa-times"></i>
               </Button>
             </Stack>
             <ConfigArray
@@ -352,45 +267,6 @@ const Home: NextPage = () => {
           </JengaPane>
         </Tab.Content>
       </Tab.Container>
-
-      <h1 className="text-2xl font-bold mb-4">Google Sheets Form</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <input
-          {...register("name", { required: true })}
-          placeholder="Your Name"
-          className="border p-2 rounded w-full"
-        />
-
-        <select
-          {...register("stars", { required: true })}
-          className="border p-2 rounded w-full"
-        >
-          <option value="">Select Stars</option>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <option key={n} value={n}>
-              {n} ⭐
-            </option>
-          ))}
-        </select>
-
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Submit
-        </button>
-      </form>
-
-      {message && <p className="mt-4">{message}</p>}
-
-      {rules &&
-        rules.map((rule) => (
-          <div key={rule.rule}>
-            <h2>{rule.rule}</h2>
-            <p>{rule.tags}</p>
-            <p>{rule.level}</p>
-          </div>
-        ))}
     </div>
   );
 };

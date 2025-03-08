@@ -8,7 +8,7 @@ interface ConfigArrayProps {
   onChange: (weights: Record<string, number[]>) => void;
 }
 
-function ConfigArray({
+export default function ConfigArray({
   categories,
   value: weights,
   onChange,

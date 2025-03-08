@@ -4,10 +4,7 @@ import { Rule } from "@/hooks/useRules";
 import Keypad from "@/components/keypad";
 import RuleDisplay from "@/components/ruleDisplay";
 import _ from "lodash";
-
-interface JengaProps {
-  assignments: Record<number, Rule[]>;
-}
+import { useWeightedRules } from "@/hooks/useWeightedRules";
 
 interface KeypadProps {
   onSubmit: (value: number) => void;
@@ -17,9 +14,26 @@ const bigButtons = {
   height: "64px",
 };
 
-export default function Jenga({ assignments }: JengaProps) {
+function generateJengaAssignments(rules,weights,optionCount) {
+  const weightedRules = createWeightedRules(rules,weights);
+  return _.times(52,() => {
+      return _.times(optionCount,_.identity).reduce((acc,v) => {
+          const chosenCategories = Object.keys(acc);
+          const reducedRules = _.reject(weightedRules,(rule) => chosenCategories.includes(rule.category));
+          if (reducedRules.length === 0) return acc;
+          const chosenRule = _.sample(reducedRules);
+          acc[chosenRule.category] = chosenRule;
+          return acc;
+      },{});
+  });
+}
+
+export default function Jenga() {
   const [jenga, setJenga] = React.useState<string | null>(null);
   const [ruleDisplay, setRuleDisplay] = React.useState<Rule | null>(null);
+  const weightedRules = useWeightedRules();
+  const [assignments,setAssignments] = React.useState(generateJengaAssignments(weightedRules,jengaChoices));
+
   return (
     <div>
       {!jenga && !ruleDisplay && (

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-
+import _ from 'lodash';
 export interface Rule {
   rule: string;
   tags: string;
-  level: string;
+  level: number;
   weight: number;
   category: string;
   subcategory: string;
@@ -15,6 +15,9 @@ export const useRules = () => {
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const tags = _.uniq(_.flatten(_.map(rules,"tags")));
+  const categories = _.uniq(_.map(rules,"category"));
 
   useEffect(() => {
     const fetchRules = async () => {
@@ -36,5 +39,5 @@ export const useRules = () => {
     fetchRules();
   }, []);
 
-  return { rules, loading, error };
+  return { rules, tags, categories, loading, error };
 };
