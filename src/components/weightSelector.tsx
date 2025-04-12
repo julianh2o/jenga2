@@ -1,6 +1,5 @@
 import React from "react";
-import { Form, Button, ListGroup, ToggleButton } from "react-bootstrap";
-import _ from "lodash";
+import { Form } from "react-bootstrap";
 
 interface WeightSelectorProps {
   value: number;

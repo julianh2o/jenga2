@@ -1,5 +1,3 @@
-import { Form, useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import ConfigArray from "@/components/configArray";
 import ChoiceGame from "@/components/modes/choiceGame";
@@ -11,7 +9,6 @@ import {
   Alert,
   Badge,
   Button,
-  ButtonGroup,
   Container,
   Dropdown,
   Nav,
@@ -35,33 +32,31 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import Jenga from "@/components/modes/jenga";
 import RuleDisplay from "@/components/ruleDisplay";
-import { leastCommonMultiple } from "@/services/math";
 import { serializeWeightsToURL, usePreset, useWeights, WeightMap, WeightProvider } from "@/hooks/weightContext";
 import { useWeightedRules } from "@/hooks/useWeightedRules";
-import { DataProvider, Preset, useData } from "@/hooks/dataContext";
+import { DataProvider, Preset, Rule, useData } from "@/hooks/dataContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// const sampleRules = (rules: Rule[], n: number) => {
+//   const choices = [];
+//   let i = 0;
+//   while (choices.length < n) {
+//       const newChoice = _.sample(rules);
+//       const found = _.find(choices,rule => newChoice?.rule === rule.rule);
+//       if (!found) choices.push(newChoice);
+//       if (i++ > n*10) {
+//           console.log("Ending infinite loop!!",rules.length,choices);
+//           break;
+//       }
+//   }
 
-const sampleRules = (rules,n) => {
-  const choices = [];
-  let i = 0;
-  while (choices.length < n) {
-      const newChoice = _.sample(rules);
-      const found = _.find(choices,rule => newChoice.rule === rule.rule);
-      if (!found) choices.push(newChoice);
-      if (i++ > n*10) {
-          console.log("Ending infinite loop!!",rules.length,choices);
-          break;
-      }
-  }
+//   return choices;
+// }
 
-  return choices;
-}
-
-const countRules = (rules) => {
+const countRules = (rules: Rule[]) => {
   const grouped = _.groupBy(rules,"rule");
   const res = _.reverse(_.sortBy(_.map(Object.entries(grouped),entry => {
-      const [ruleText,rules] = entry;
+      const [,rules] = entry;
       const rule = _.first(rules);
       const count = rules.length;
       return {rule,count};
@@ -176,30 +171,27 @@ function GameRoot() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <Tab.Container id="maintabs" defaultActiveKey="jenga" className="flex">
+      <Tab.Container id="maintabs" defaultActiveKey="jenga">
         <Container style={{ height: "75px" }}>
           <Nav variant="primary" className="flex-row justify-content-between">
             <Navbar.Brand>Party Jenga</Navbar.Brand>
             <Stack className="align-middle" direction="horizontal">
               <Dropdown>
                 <Dropdown.Toggle
-                  as={React.forwardRef(
-                    (
+                  as={React.forwardRef(function DropdownToggle(
                       {
-                        children,
                         onClick,
                       }: {
-                        children: React.ReactNode;
                         onClick: (e: React.MouseEvent) => void;
                       },
                       ref: React.Ref<HTMLElement>
-                    ) => (
-                      <Badge ref={ref} onClick={e => { e.preventDefault(); onClick(e); }}>{preset} <FontAwesomeIcon icon={faChevronDown} className="fa-fw" /></Badge>
-                    )
+                    ) { 
+                      return (<Badge ref={ref} onClick={e => { e.preventDefault(); onClick(e); }}>{preset} <FontAwesomeIcon icon={faChevronDown} className="fa-fw" /></Badge>)
+                    }
                   )}
                 />
                 <Dropdown.Menu>
-                  {_.map(presets, p => <Dropdown.Item onClick={e => { selectPreset(p.name); }}>{p.name}</Dropdown.Item>)}
+                  {_.map(presets, p => <Dropdown.Item key={p.name} onClick={() => { selectPreset(p.name); }}>{p.name}</Dropdown.Item>)}
                 </Dropdown.Menu>
               </Dropdown>
             </Stack>
@@ -236,14 +228,14 @@ function GameRoot() {
           </JengaPane>
           <JengaPane eventKey="list" title="Rule Listing">
             {countRules(weightedRules).map(({ rule, count }) => (
-              <RuleDisplay mode="rule" compact weight={count} rule={rule} />
+              <RuleDisplay key={rule?.id} mode="rule" compact weight={count} rule={rule} />
             ))}
           </JengaPane>
           <JengaPane eventKey="config" title="Configure">
             <Stack direction="horizontal" gap={2}>
               <ConfigPresetSelector
                 custom
-                value={preset}
+                value={preset || ""}
                 presets={presets}
                 onChange={(preset) => selectPreset(preset)}
               />
@@ -262,12 +254,12 @@ function GameRoot() {
             <ConfigArray
               value={weights}
               categories={categories}
-              onChange={(weights) => configSelected(weights, null)}
+              onChange={(weights) => configSelected(weights)}
             />
             <TagSelector
               value={weights}
               tags={tags}
-              onChange={(weights) => configSelected(weights, null)}
+              onChange={(weights) => configSelected(weights)}
             />
             <Stack direction="horizontal" gap={2} className={"mt-4"}>
               {/* <Button variant="danger" onClick={resetPresets}>

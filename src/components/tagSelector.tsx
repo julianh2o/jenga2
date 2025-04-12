@@ -1,5 +1,5 @@
-import { ToggleButton } from 'react-bootstrap';
-import _ from 'lodash';
+import { ToggleButton } from "react-bootstrap";
+import _ from "lodash";
 
 interface TagSelectorProps {
   tags: string[];
@@ -7,15 +7,23 @@ interface TagSelectorProps {
   onChange: (weights: Record<string, number[]>) => void;
 }
 
-export default function TagSelector({ tags, value: weights, onChange }: TagSelectorProps) {
+export default function TagSelector({
+  tags,
+  value: weights,
+  onChange,
+}: TagSelectorProps) {
   const categoryStyle = {
-    fontWeight: 'bold' as const
+    fontWeight: "bold" as const,
   };
 
   const doChange = (tag: string, value: number) => {
     console.log({ tag, value });
     const weightClone = _.cloneDeep(weights);
-    _.set(weightClone, `${tag}`, _.times(5, () => value));
+    _.set(
+      weightClone,
+      `${tag}`,
+      _.times(5, () => value)
+    );
     onChange(weightClone);
   };
 
@@ -33,7 +41,8 @@ export default function TagSelector({ tags, value: weights, onChange }: TagSelec
             variant="outline-primary"
             value="1"
             checked={Boolean(_.get(weights, `${tag}.0`, 1))}
-            onClick={() => doChange(tag, _.get(weights, `${tag}.0`, 1) ? 0 : 1)} id={''}          >
+            onClick={() => doChange(tag, _.get(weights, `${tag}.0`, 1) ? 0 : 1)}
+          >
             {tag}
           </ToggleButton>
         ))}

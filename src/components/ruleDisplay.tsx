@@ -1,5 +1,5 @@
 import { Card, Stack, Button, Badge } from "react-bootstrap";
-import { Rule } from "@/hooks/useRules";
+import { Rule } from "@/hooks/dataContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUndo } from "@fortawesome/free-solid-svg-icons";
 import RatingStars from "./ratingStars";

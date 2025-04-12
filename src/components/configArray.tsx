@@ -1,4 +1,4 @@
-import { ListGroup, ToggleButton } from "react-bootstrap";
+import { ListGroup } from "react-bootstrap";
 import WeightSelector from "@/components/weightSelector";
 import _ from "lodash";
 
@@ -51,48 +51,48 @@ export default function ConfigArray({
   );
 }
 
-interface TagSelectorProps {
-  tags: string[];
-  value: Record<string, number[]>;
-  onChange: (weights: Record<string, number[]>) => void;
-}
+// interface TagSelectorProps {
+//   tags: string[];
+//   value: Record<string, number[]>;
+//   onChange: (weights: Record<string, number[]>) => void;
+// }
 
-function TagSelector({ tags, value: weights, onChange }: TagSelectorProps) {
-  const categoryStyle = {
-    fontWeight: "bold" as const,
-  };
+// function TagSelector({ tags, value: weights, onChange }: TagSelectorProps) {
+//   const categoryStyle = {
+//     fontWeight: "bold" as const,
+//   };
 
-  const doChange = (tag: string, value: number) => {
-    console.log({ tag, value });
-    const weightClone = _.cloneDeep(weights);
-    _.set(
-      weightClone,
-      `${tag}`,
-      _.times(5, () => value)
-    );
-    onChange(weightClone);
-  };
+//   const doChange = (tag: string, value: number) => {
+//     console.log({ tag, value });
+//     const weightClone = _.cloneDeep(weights);
+//     _.set(
+//       weightClone,
+//       `${tag}`,
+//       _.times(5, () => value)
+//     );
+//     onChange(weightClone);
+//   };
 
-  return (
-    <div>
-      <span style={categoryStyle}>Tags</span>
-      <div className="d-flex gap-2">
-        {tags.map((tag) => (
-          <ToggleButton
-            className="btn-toggle"
-            style={{ margin: 4 }}
-            key={tag}
-            type="checkbox"
-            variant="outline-primary"
-            value="1"
-            checked={_.get(weights, `${tag}.0`, 1) ? true : false}
-            onClick={() => doChange(tag, _.get(weights, `${tag}.0`, 1) ? 0 : 1)}
-            id={""}
-          >
-            {tag}
-          </ToggleButton>
-        ))}
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div>
+//       <span style={categoryStyle}>Tags</span>
+//       <div className="d-flex gap-2">
+//         {tags.map((tag) => (
+//           <ToggleButton
+//             className="btn-toggle"
+//             style={{ margin: 4 }}
+//             key={tag}
+//             type="checkbox"
+//             variant="outline-primary"
+//             value="1"
+//             checked={_.get(weights, `${tag}.0`, 1) ? true : false}
+//             onClick={() => doChange(tag, _.get(weights, `${tag}.0`, 1) ? 0 : 1)}
+//             id={""}
+//           >
+//             {tag}
+//           </ToggleButton>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }

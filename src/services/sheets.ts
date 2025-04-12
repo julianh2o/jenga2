@@ -13,17 +13,23 @@ interface Rule {
     notes: string;
 }
 
-export async function insertRating(id: string, user: string, rating: number, preset: string) {
-    if (!process.env.GOOGLE_SHEETS_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS) {
+function getSheets() {
+    if (!process.env.GOOGLE_SHEETS_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64) {
         throw new Error("Missing required environment variables");
     }
 
     const auth = new google.auth.GoogleAuth({
-        keyFile: process.env.GOOGLE_SHEETS_CREDENTIALS,
+        credentials: JSON.parse(Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64 || '', 'base64').toString()),
         scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
-    const sheets = google.sheets({ version: "v4", auth });
+    return google.sheets({ version: "v4", auth });
+}
+
+
+
+export async function insertRating(id: string, user: string, rating: number, preset: string) {
+    const sheets = getSheets();
     const range = "Ratings!A:D";
 
     await sheets.spreadsheets.values.append({
@@ -37,17 +43,7 @@ export async function insertRating(id: string, user: string, rating: number, pre
 }
 
 export async function fetchRules(): Promise<Rule[]> {
-    // Validate required environment variables
-    if (!process.env.GOOGLE_SHEETS_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS) {
-        throw new Error("Missing required environment variables");
-    }
-
-    const auth = new google.auth.GoogleAuth({
-        keyFile: process.env.GOOGLE_SHEETS_CREDENTIALS,
-        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
+    const sheets = getSheets();
     const range = "Rules!A:H"; // Columns A through H
 
     const response = await sheets.spreadsheets.values.get({

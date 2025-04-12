@@ -1,7 +1,7 @@
 import React from 'react';
 import _ from 'lodash';
 import { Container, ButtonGroup, Button } from 'react-bootstrap';
-import { Rule } from '@/hooks/useRules';
+import { Rule } from '@/hooks/dataContext';
 import RuleDisplay from '@/components/ruleDisplay';
 
 interface ChoiceGameProps {
