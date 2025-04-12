@@ -1,9 +1,9 @@
 class StorageService {
     private static instance: StorageService;
-    private storage: Storage;
+    private storage?: Storage;
 
     private constructor() {
-        this.storage = typeof window !== 'undefined' ? window.localStorage : null;
+        this.storage = typeof window !== 'undefined' ? window.localStorage : undefined;
     }
 
     public static getInstance(): StorageService {

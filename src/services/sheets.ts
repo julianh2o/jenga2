@@ -1,9 +1,11 @@
 import { google } from 'googleapis';
+import _ from 'lodash';
 
 interface Rule {
+    id: string;
     rule: string;
-    tags: string;
-    level: string;
+    tags: string[];
+    level: number;
     weight: number;
     category: string;
     subcategory: string;
@@ -11,8 +13,7 @@ interface Rule {
     notes: string;
 }
 
-export async function insertRating(name: string, stars: number) {
-    // Validate required environment variables
+export async function insertRating(id: string, user: string, rating: number, preset: string) {
     if (!process.env.GOOGLE_SHEETS_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS) {
         throw new Error("Missing required environment variables");
     }
@@ -23,14 +24,14 @@ export async function insertRating(name: string, stars: number) {
     });
 
     const sheets = google.sheets({ version: "v4", auth });
-    const range = "Sheet1!A:B";
+    const range = "Ratings!A:D";
 
     await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEETS_ID,
         range,
         valueInputOption: "RAW",
         requestBody: {
-            values: [[name, stars]]
+            values: [[id, user, rating, preset]]
         }
     });
 }
@@ -62,26 +63,37 @@ export async function fetchRules(): Promise<Rule[]> {
 
     // Get header row and use it to map column names to indices
     const headers = values[0];
-    const columnMap = {
-        Rule: headers.indexOf('Rule'),
-        Tags: headers.indexOf('Tags'),
-        Level: headers.indexOf('Level'),
-        Weight: headers.indexOf('Weight'),
-        Category: headers.indexOf('Category'),
-        Subcategory: headers.indexOf('Subcategory'),
-        Originator: headers.indexOf('Originator'),
-        Notes: headers.indexOf('Notes')
-    };
+    // Map remaining rows to Rule objects
 
-    // Map remaining rows to Rule objects using header indices
-    return values.slice(1).map((row): Rule => ({
-        rule: row[columnMap.Rule] || '',
-        tags: row[columnMap.Tags] || '',
-        level: row[columnMap.Level] || '',
-        weight: Number(row[columnMap.Weight]) || 0,
-        category: row[columnMap.Category] || '',
-        subcategory: row[columnMap.Subcategory] || '',
-        originator: row[columnMap.Originator] || '',
-        notes: row[columnMap.Notes] || ''
+    const rulesRaw = values.slice(1)
+    const validateRow = (row: string[]) => {
+        const errors = [];
+        if (row[headers.indexOf('ID')] === undefined) errors.push("ID is undefined");
+        if (!parseInt(row[headers.indexOf('Level')])) errors.push("Level is not a number");
+        if (row[headers.indexOf('Category')] === undefined) errors.push("Category is undefined");
+        return errors;
+    }
+
+    const ruleErrors = _.flatten(rulesRaw.map((row) => {
+        return validateRow(row).map(
+            (error) => `${row[headers.indexOf('Rule')]} : ${error}`
+        )
+    }));
+    if (ruleErrors.length > 0) {
+        console.error("Rule errors",ruleErrors);
+    }
+
+    const filteredRules = rulesRaw.filter((row) => validateRow(row).length === 0);
+
+    return filteredRules.map((row): Rule => ({
+        id: row[headers.indexOf('ID')] || undefined,
+        rule: row[headers.indexOf('Rule')] || undefined,
+        tags: (row[headers.indexOf('Tags')] || '').split(';').map((tag: string) => tag.trim()).filter(Boolean),
+        level: parseInt(row[headers.indexOf('Level')]) || 1,
+        weight: parseInt(row[headers.indexOf('Weight')]) || 1,
+        category: row[headers.indexOf('Category')] || undefined,
+        subcategory: row[headers.indexOf('Subcategory')] || undefined,
+        originator: row[headers.indexOf('Originator')] || undefined,
+        notes: row[headers.indexOf('Notes')] || undefined
     }));
 }

@@ -5,6 +5,8 @@ import Keypad from "@/components/keypad";
 import RuleDisplay from "@/components/ruleDisplay";
 import _ from "lodash";
 import { useWeightedRules } from "@/hooks/useWeightedRules";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faDice } from "@fortawesome/free-solid-svg-icons";
 
 interface KeypadProps {
   onSubmit: (value: number) => void;
@@ -14,34 +16,42 @@ const bigButtons = {
   height: "64px",
 };
 
-function generateJengaAssignments(rules,weights,optionCount) {
-  const weightedRules = createWeightedRules(rules,weights);
-  return _.times(52,() => {
-      return _.times(optionCount,_.identity).reduce((acc,v) => {
-          const chosenCategories = Object.keys(acc);
-          const reducedRules = _.reject(weightedRules,(rule) => chosenCategories.includes(rule.category));
-          if (reducedRules.length === 0) return acc;
-          const chosenRule = _.sample(reducedRules);
-          acc[chosenRule.category] = chosenRule;
-          return acc;
-      },{});
+function generateJengaAssignments(rules: Rule[], optionCount: number): Record<string, Rule>[] {
+  return _.times(52, () => {
+    return _.times(optionCount, _.identity).reduce<Record<string, Rule>>((acc, v) => {
+      const chosenCategories = Object.keys(acc);
+      const reducedRules = _.reject(rules, (rule) => chosenCategories.includes(rule.category));
+      if (reducedRules.length === 0) return acc;
+      const chosenRule = _.sample(reducedRules);
+      if (chosenRule) {
+        acc[chosenRule.category] = chosenRule;
+      }
+      return acc;
+    }, {});
   });
 }
 
 export default function Jenga() {
-  const [jenga, setJenga] = React.useState<string | null>(null);
+  const [jenga, setJenga] = React.useState<number | null>(null);
   const [ruleDisplay, setRuleDisplay] = React.useState<Rule | null>(null);
   const weightedRules = useWeightedRules();
-  const [assignments,setAssignments] = React.useState(generateJengaAssignments(weightedRules,jengaChoices));
+  const [assignments,setAssignments] = React.useState<Record<string, Rule>[]>([]);
+  console.log({weightedRules});
 
+  React.useEffect(() => {
+    setAssignments(generateJengaAssignments(weightedRules,3));
+  }, []);
+
+  if (assignments.length === 0) return <div>Loading...</div>;
   return (
     <div>
       {!jenga && !ruleDisplay && (
-        <Keypad onSubmit={(value: string) => setJenga(value)} />
+        <Keypad onSubmit={(value: number) => setJenga(value)} />
       )}
       {jenga && (
         <div>
           <RuleDisplay
+            mode="tile"
             tile={jenga}
             backClicked={() => {
               setJenga(null);
@@ -49,32 +59,21 @@ export default function Jenga() {
             }}
           />
           <ButtonGroup vertical className="w-100">
-            {Object.values(assignments[parseInt(jenga) - 1]).map((rule: Rule) => (
+            {Object.values(assignments[jenga - 1]).map((rule: Rule) => (
               <Stack key={rule.category}>
-                {rule === ruleDisplay ? (
-                  <RuleDisplay rule={rule} selected={true} />
-                ) : (
-                  <Button
-                    onClick={() => setRuleDisplay(rule)}
-                    style={bigButtons}
-                    className="mb-2"
-                    key={rule.category}
-                  >
-                    {rule.category} {rule.level}
-                  </Button>
-                )}
+                  <RuleDisplay rule={rule} mode={rule === ruleDisplay ? "rule" : "category"} selected={rule === ruleDisplay} onClick={() => setRuleDisplay(rule)}/>
               </Stack>
             ))}
             <Button
               style={bigButtons}
               onClick={() =>
                 setRuleDisplay(
-                  _.sample(Object.values(assignments[parseInt(jenga) - 1])) ||
+                  _.sample(Object.values(assignments[jenga - 1])) ||
                     null
                 )
               }
             >
-              <i className="fas fa-dice"></i>
+              <FontAwesomeIcon icon={faDice} className="fa-fw" />
             </Button>
           </ButtonGroup>
         </div>

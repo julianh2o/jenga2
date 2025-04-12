@@ -1,11 +1,12 @@
 import { Form, useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import type { NextPage } from "next";
-import { useRules } from "@/hooks/useRules";
 import ConfigArray from "@/components/configArray";
 import ChoiceGame from "@/components/modes/choiceGame";
 import TagSelector from "@/components/tagSelector";
 import ConfigPresetSelector from "@/components/configPresetSelector";
+import StorageService from "@/services/storage";
+import FastGameMode from "@/components/modes/fastGame";
 import {
   Alert,
   Badge,
@@ -28,12 +29,17 @@ import {
   faSitemap,
   faList,
   faCog,
+  faCopy,
+  faLink,
+  faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import Jenga from "@/components/modes/jenga";
 import RuleDisplay from "@/components/ruleDisplay";
 import { leastCommonMultiple } from "@/services/math";
-import { useWeights, WeightProvider } from "@/hooks/weightContext";
+import { serializeWeightsToURL, usePreset, useWeights, WeightMap, WeightProvider } from "@/hooks/weightContext";
 import { useWeightedRules } from "@/hooks/useWeightedRules";
+import { DataProvider, Preset, useData } from "@/hooks/dataContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 
 const sampleRules = (rules,n) => {
@@ -83,9 +89,7 @@ function JengaPane({ eventKey, title, children }: JengaPaneProps) {
 }
 
 const Home: NextPage = () => {
-  const { loading, error } = useRules();
-
-  const presets = [
+  const presets: Preset[] = [
     {
         "name": "Flat",
         "weights": {
@@ -130,36 +134,43 @@ const Home: NextPage = () => {
     }},
 ];
 
-  const jengaChoices = 3;
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const preset: string = StorageService.getObject("preset") || _.first(presets)!.name;
+  const weights: WeightMap = StorageService.getObject("weights") || _.first(presets)!.weights;
 
   return <>
-    <WeightProvider>
-      <GameRoot 
+    <QueryClientProvider client={new QueryClient()}>
+      <DataProvider
         presets={presets}
-      />
-    </WeightProvider>
+      >
+        <WeightProvider
+          defaultPreset={preset}
+          defaultWeights={weights}
+        >
+          <GameRoot />
+        </WeightProvider>
+      </DataProvider>
+    </QueryClientProvider>
   </>
 }
-function GameRoot({ presets }: { presets: { name: string, weights: Record<string, number[]> }[] }) {
+function GameRoot() {
   const {weights,setWeights} = useWeights();
+  const {preset,setPreset} = usePreset();
+  const {presets} = useData();
+  const { categories, tags } = useData();
   const weightedRules = useWeightedRules();
-  const [preset,setPreset] = React.useState(localStorage.getObject("preset") || _.first(presets)!.name);
 
-  const configSelected = (weights, name) => {
+  const configSelected = (weights?: WeightMap, name?: string) => {
       name = name || "custom";
       if (weights) {
           setWeights(weights);
-          localStorage.setObject("weights",weights)
+          StorageService.setObject("weights",weights)
       }
       setPreset(name);
-      localStorage.setObject("preset",name);
+      StorageService.setObject("preset",name);
   };
 
-  const selectPreset = (presetName) => {
-      const preset = _.find(userPresets,{name:presetName});
+  const selectPreset = (presetName: string) => {
+      const preset = _.find(presets,{name:presetName});
       configSelected(preset && preset.weights,presetName);
   }
 
@@ -183,13 +194,12 @@ function GameRoot({ presets }: { presets: { name: string, weights: Record<string
                       },
                       ref: React.Ref<HTMLElement>
                     ) => (
-                      // <Badge ref={ref} onClick={e => { e.preventDefault(); onClick(e); }}>{preset} <FontAwesomeIcon icon={faChevronDown} className="fa-fw" /></Badge>
-                      <div>foo</div>
+                      <Badge ref={ref} onClick={e => { e.preventDefault(); onClick(e); }}>{preset} <FontAwesomeIcon icon={faChevronDown} className="fa-fw" /></Badge>
                     )
                   )}
                 />
                 <Dropdown.Menu>
-                  {/* {_.map(userPresets, p => <Dropdown.Item onClick={e => { selectPreset(p.name); }}>{p.name}</Dropdown.Item>)} */}
+                  {_.map(presets, p => <Dropdown.Item onClick={e => { selectPreset(p.name); }}>{p.name}</Dropdown.Item>)}
                 </Dropdown.Menu>
               </Dropdown>
             </Stack>
@@ -226,7 +236,7 @@ function GameRoot({ presets }: { presets: { name: string, weights: Record<string
           </JengaPane>
           <JengaPane eventKey="list" title="Rule Listing">
             {countRules(weightedRules).map(({ rule, count }) => (
-              <RuleDisplay compact weight={count} rule={rule} />
+              <RuleDisplay mode="rule" compact weight={count} rule={rule} />
             ))}
           </JengaPane>
           <JengaPane eventKey="config" title="Configure">
@@ -234,7 +244,7 @@ function GameRoot({ presets }: { presets: { name: string, weights: Record<string
               <ConfigPresetSelector
                 custom
                 value={preset}
-                presets={userPresets}
+                presets={presets}
                 onChange={(preset) => selectPreset(preset)}
               />
               <Button
@@ -243,10 +253,10 @@ function GameRoot({ presets }: { presets: { name: string, weights: Record<string
                   prompt("Copy", JSON.stringify({ name: preset, weights }))
                 }
               >
-                <i className="fas fa-copy"></i>
+                <FontAwesomeIcon icon={faCopy} className="fa-fw" />
               </Button>
-              <Button onClick={() => linkPreset(weights)}>
-                <i className="fas fa-link"></i>
+              <Button onClick={() => prompt("Copy link", serializeWeightsToURL(weights))}>
+                <FontAwesomeIcon icon={faLink} className="fa-fw" />
               </Button>
             </Stack>
             <ConfigArray
@@ -256,13 +266,13 @@ function GameRoot({ presets }: { presets: { name: string, weights: Record<string
             />
             <TagSelector
               value={weights}
-              tags={allTags}
+              tags={tags}
               onChange={(weights) => configSelected(weights, null)}
             />
             <Stack direction="horizontal" gap={2} className={"mt-4"}>
-              <Button variant="danger" onClick={resetPresets}>
+              {/* <Button variant="danger" onClick={resetPresets}>
                 Reset Presets
-              </Button>
+              </Button> */}
             </Stack>
           </JengaPane>
         </Tab.Content>

@@ -12,7 +12,7 @@ import { useWeightedRules } from '@/hooks/useWeightedRules';
     
     return (
       <div className="d-flex flex-column gap-3">
-        <RuleDisplay rule={rule} />
+        <RuleDisplay mode="rule" rule={rule} />
         <ButtonGroup vertical className="w-100">
           <Button onClick={() => setRule(_.sample(weightedRules))}>
             <i className="fas fa-dice"></i>

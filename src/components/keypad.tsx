@@ -2,9 +2,14 @@ import _ from "lodash";
 import React from "react";
 import { JSX } from "react";
 import { Form, Button } from "react-bootstrap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBackspace,
+  faCheckCircle,
+} from "@fortawesome/free-solid-svg-icons";
 
 interface KeypadProps {
-  onSubmit: (value: string) => void;
+  onSubmit: (value: number) => void;
 }
 
 export default function Keypad({ onSubmit }: KeypadProps) {
@@ -29,16 +34,27 @@ export default function Keypad({ onSubmit }: KeypadProps) {
   ]);
 
   const display: Record<string, JSX.Element | null> = {
-    del: <i className="fas fa-backspace"></i>,
-    ok: <i className="fas fa-check-circle"></i>,
+    del: <FontAwesomeIcon icon={faBackspace} className="fa-fw" />,
+    ok: <FontAwesomeIcon icon={faCheckCircle} className="fa-fw" />,
+  };
+
+  const handleSubmit = () => {
+    const numValue = parseInt(entry);
+    if (isNaN(numValue)) {
+      console.error("Invalid number entered:", entry);
+      return;
+    }
+    if (numValue < 1 || numValue > 52) {
+      console.error("Number must be between 1 and 52:", numValue);
+      return;
+    }
+    onSubmit(numValue);
+    setEntry("");
   };
 
   const behavior: Record<string, () => void> = {
     del: () => setEntry(entry.substring(0, entry.length - 1)),
-    ok: () => {
-      onSubmit(entry);
-      setEntry("");
-    },
+    ok: handleSubmit
   };
 
   return (
@@ -48,7 +64,7 @@ export default function Keypad({ onSubmit }: KeypadProps) {
         {keys.map((key) => (
           <Button
             disabled={
-              key === "ok" && (parseInt(entry) === null || parseInt(entry) > 52)
+              key === "ok" && (!entry || isNaN(parseInt(entry)) || parseInt(entry) > 52 || parseInt(entry) < 1)
             }
             style={bigButtons}
             key={key}

@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState } from 'react';
 
-type WeightMap = {
+export type WeightMap = {
   [key: string]: number[];
 };
 
 interface WeightContextType {
+  preset?: string;
+  setPreset: (preset: string) => void;
   weights: WeightMap;
   setWeights: (weights: WeightMap) => void;
 }
@@ -24,8 +26,9 @@ export function deserializeWeightsFromHash(hash: string) {
   return weights;
 }
 
-export function WeightProvider({ children }: { children: React.ReactNode }) {
-  const [weights, setWeights] = useState<WeightMap>({
+export function WeightProvider({ children, defaultPreset, defaultWeights }: { children: React.ReactNode, defaultPreset: string, defaultWeights: WeightMap }) {
+  const [preset, setPreset] = useState<string>(defaultPreset || "custom");
+  const [weights, setWeights] = useState<WeightMap>(defaultWeights || {
     "Physical": [1, 1, 1, 1, 1],
     "Drinking": [1, 1, 1, 1, 1], 
     "Gameplay": [1, 1, 1, 1, 1],
@@ -34,7 +37,7 @@ export function WeightProvider({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <WeightContext.Provider value={{ weights, setWeights }}>
+    <WeightContext.Provider value={{ preset, setPreset, weights, setWeights }}>
       {children}
     </WeightContext.Provider>
   );
@@ -44,6 +47,14 @@ export function useWeights() {
   const context = useContext(WeightContext);
   if (context === undefined) {
     throw new Error('useWeights must be used within a WeightProvider');
+  }
+  return context;
+}
+
+export function usePreset() {
+  const context = useContext(WeightContext);
+  if (context === undefined) {
+    throw new Error('usePreset must be used within a WeightProvider');
   }
   return context;
 }

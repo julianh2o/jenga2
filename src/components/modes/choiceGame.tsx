@@ -35,11 +35,12 @@ export default function ChoiceGame({ rules, choices }: ChoiceGameProps) {
   return (<Container>
     {filterPhase && <h2>Choose 2 and pass</h2>}
     {choosePhase && <h2>Choose</h2>}
-    {displayPhase && <RuleDisplay rule={chosen} />}
+    {displayPhase && <RuleDisplay rule={chosen} mode="rule" />}
     {!displayPhase && _.map(draw, rule => <RuleDisplay
       disabled={Boolean(locked && !locked.includes(rule))}
       selected={selected.includes(rule)}
       rule={rule}
+      mode="rule"
       onClick={() => locked ? setChosen(rule) : (selected.includes(rule) ? setSelected(_.without(selected, rule)) : setSelected([...selected, rule]))}
     />)}
     <ButtonGroup vertical className="w-100">

@@ -1,11 +1,11 @@
 import _ from 'lodash';
-import { useRules, Rule } from './useRules';
 import { useWeights } from './weightContext';
 import { leastCommonMultiple } from '@/services/math';
 import React from 'react';
+import { Rule, useData } from './dataContext';
 
 export function useWeightedRules() {
-  const { rules } = useRules();
+  const { rules } = useData();
   const { weights } = useWeights();
 
   const weightedRules = React.useMemo(() => {

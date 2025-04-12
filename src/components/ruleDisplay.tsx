@@ -1,11 +1,15 @@
 import { Card, Stack, Button, Badge } from "react-bootstrap";
 import { Rule } from "@/hooks/useRules";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUndo } from "@fortawesome/free-solid-svg-icons";
+import RatingStars from "./ratingStars";
 
 interface RuleDisplayProps {
   disabled?: boolean;
   selected?: boolean;
   compact?: boolean;
-  tile?: string;
+  tile?: number;
+  mode: "category" | "tile" | "rule";
   backClicked?: () => void;
   onClick?: () => void;
   rule?: Rule;
@@ -25,31 +29,39 @@ export default function RuleDisplay(props: RuleDisplayProps) {
       onClick={props.onClick}
     >
       <Card.Body className={props.compact ? "p-1" : ""}>
-        <Stack direction="horizontal">
-          {props.tile && <Card.Title>Tile {props.tile}</Card.Title>}
-          {props.backClicked && (
-            <Button
-              style={{ height: "42px", width: "42px" }}
-              className="ms-auto"
-              onClick={props.backClicked}
-            >
-              <i className="fas fa-undo"></i>
-            </Button>
+        <Stack direction="horizontal" gap={2}>
+          {props.mode === "category" && (
+            <span className="mx-auto">{props.rule?.category} {props.rule?.level}</span>
+          )}
+          {props.mode === "tile" && (
+            <>
+              {props.tile && <Card.Title>Tile {props.tile}</Card.Title>}
+              {props.backClicked && (
+                <Button
+                  style={{ height: "42px", width: "42px" }}
+                  className="ms-auto"
+                  onClick={props.backClicked}
+                >
+                  <FontAwesomeIcon icon={faUndo} className="fa-fw" />
+                </Button>
+              )}
+            </>
+          )}
+          {props.mode === "rule" && (
+            <>
+              {props.weight && (
+                <Badge bg="primary">
+                  {props.weight}x
+                </Badge>
+              )}
+              <Badge bg="secondary">
+                {props.rule?.category} {props.rule?.level}
+              </Badge>
+              <span className="flex-grow-1">{props.rule?.rule}</span>
+              <RatingStars rule={props.rule} />
+            </>
           )}
         </Stack>
-        {(props.rule || props.weight) && (
-          <div>
-            {props.weight && (
-              <Badge bg="primary" className="mx-1">
-                {props.weight}x
-              </Badge>
-            )}
-            <Badge bg="secondary" className="mx-1">
-              {props.rule?.category} {props.rule?.level}
-            </Badge>
-            <span>{props.rule?.rule}</span>
-          </div>
-        )}
       </Card.Body>
     </Card>
   );
